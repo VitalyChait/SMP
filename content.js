@@ -264,7 +264,19 @@ function showResultOverlay(postElement, data) {
     </div>
   `;
 
-  postElement.insertBefore(overlay, postElement.firstChild);
+  // Find Action Bar to insert BEFORE it
+  const actionBar = findActionBar(postElement);
+  if (actionBar) {
+    // Insert before the action bar to push it and comments down
+    // We try to insert into the parent of the action bar if possible, 
+    // or just before the action bar element itself.
+    // Usually actionBar is a child of the main post container (or nested deep).
+    // If we insert before actionBar, we are inside the structure.
+    actionBar.parentElement.insertBefore(overlay, actionBar);
+  } else {
+    // Fallback: Append to end of post element
+    postElement.appendChild(overlay);
+  }
 
   overlay.querySelector('.sp-close-btn').addEventListener('click', () => {
     overlay.remove();
