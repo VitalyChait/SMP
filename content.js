@@ -1,7 +1,7 @@
 // Content Script for Facebook Social Police
 
 // Selectors
-const POST_SELECTOR = 'div[role="feed"] > div, div[role="article"]'; 
+const POST_SELECTOR = 'div[role="feed"] > div, div[role="article"], div[role="main"] div[role="feed"] > div'; 
 const TEXT_SELECTOR = 'div[dir="auto"], span[dir="auto"]'; 
 const PROCESSED_ATTR = 'data-social-police-processed';
 
