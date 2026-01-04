@@ -110,32 +110,43 @@ function processPosts() {
 
 function extractPostContent(postElement) {
   // Text Extraction
-  // 1. Try standard selectors
   let text = '';
-  const textElements = postElement.querySelectorAll(TEXT_SELECTOR);
   
-  // 2. Specialized extraction for "single post" views which are deeply nested
-  // The provided HTML snippet shows text in divs with 'dir="auto"' and 'style="text-align: start;"'
-  // and specific classes like 'xdj266r x14z9mp...'
-  if (textElements.length === 0) {
-      // Fallback: search for any div with dir="auto" that has text content
-      const fallbackTexts = postElement.querySelectorAll('div[dir="auto"], span[dir="auto"]');
-      fallbackTexts.forEach(el => {
-        // Exclude hidden elements or common UI noise
-        if (el.innerText && el.innerText.length > 5 && !el.closest('h2') && !el.closest('h3')) {
-             if (!text.includes(el.innerText)) {
+  // Priority: explicit ad-rendering roles (often used for main post text)
+  const roleElements = postElement.querySelectorAll('[data-ad-rendering-role="description"], [data-ad-rendering-role="story_message"]');
+  if (roleElements.length > 0) {
+      roleElements.forEach(el => {
+          if (el.innerText && !text.includes(el.innerText)) {
+              text += el.innerText + '\n';
+          }
+      });
+  }
+
+  // 1. Try standard selectors if no priority text found or to supplement
+  if (text.length < 10) {
+      const textElements = postElement.querySelectorAll(TEXT_SELECTOR);
+      
+      // 2. Specialized extraction
+      if (textElements.length === 0) {
+          // Fallback: search for any div with dir="auto" that has text content
+          const fallbackTexts = postElement.querySelectorAll('div[dir="auto"], span[dir="auto"]');
+          fallbackTexts.forEach(el => {
+            // Exclude hidden elements or common UI noise
+            if (el.innerText && el.innerText.length > 5 && !el.closest('h2') && !el.closest('h3')) {
+                 if (!text.includes(el.innerText)) {
+                     text += el.innerText + '\n';
+                 }
+            }
+          });
+      } else {
+          textElements.forEach(el => {
+            if (el.offsetParent !== null && el.innerText.length > 5) {
+               if (!text.includes(el.innerText)) {
                  text += el.innerText + '\n';
-             }
-        }
-      });
-  } else {
-      textElements.forEach(el => {
-        if (el.offsetParent !== null && el.innerText.length > 5) {
-           if (!text.includes(el.innerText)) {
-             text += el.innerText + '\n';
-           }
-        }
-      });
+               }
+            }
+          });
+      }
   }
 
   const images = postElement.querySelectorAll('img');
@@ -164,37 +175,49 @@ function extractPostContent(postElement) {
 function findActionBar(post) {
     // Strategy: Look for the specific Share button role/text to anchor ourselves
     // We want the container that holds the Like/Comment/Share buttons.
-    // The user provided structure shows the buttons are in a flex/grid row.
-    // The user wants to inject INTO this row, after the existing elements.
+    // Use strict matching to avoid "289 shares" or "2.3K likes" (Status Bar).
     
-    // We search for elements that look like the 'Share' or 'Like' action button.
-    const buttons = post.querySelectorAll('div[role="button"]');
+    const buttons = post.querySelectorAll('div[role="button"], span[role="button"], button');
+    
+    // 1. First pass: Look for "Share" or "Send" explicitly WITHOUT numbers
     for(let btn of buttons) {
-        const txt = btn.innerText || btn.getAttribute('aria-label') || '';
-        // "Share" is usually unique enough and at the end of the list
-        if(txt === 'Share' || txt === 'Send' || txt.includes('Share')) {
+        const txt = (btn.innerText || btn.getAttribute('aria-label') || '').trim();
+        // Skip if contains numbers (likely status bar)
+        if (/\d/.test(txt)) continue;
+        
+        if(txt === 'Share' || txt === 'Send' || txt === 'שתף') { // Added Hebrew 'Share' just in case, given Hebrew text in example
            let parent = btn.parentElement;
-           // Traverse up to find the row container.
-           // In the provided snippet, the buttons are in a flex container.
-           // We just need to find the parent that contains multiple buttons.
            while(parent && parent !== post) {
-             if(parent.querySelectorAll('div[role="button"]').length >= 2) {
-               return parent; 
+             // The action bar usually has 3 buttons (Like, Comment, Share)
+             // We check for >= 2 buttons in the container
+             const siblings = parent.querySelectorAll('div[role="button"], span[role="button"], button');
+             if(siblings.length >= 2) {
+                 // Double check siblings to ensure they are also actions and not statuses
+                 let validActions = 0;
+                 siblings.forEach(sib => {
+                     const sTxt = (sib.innerText || sib.getAttribute('aria-label') || '').trim();
+                     if (!/\d/.test(sTxt) && (sTxt === 'Like' || sTxt === 'Comment' || sTxt === 'Share' || sTxt === 'Send' || sTxt.includes('Like') || sTxt.includes('Comment'))) {
+                         validActions++;
+                     }
+                 });
+                 if (validActions >= 2) return parent;
              }
              parent = parent.parentElement;
            }
-           // Fallback if structure is flat
+           // Fallback
            return btn.parentElement.parentElement;
         }
     }
-    
-    // Fallback search for Like/Comment if Share not found
+
+    // 2. Fallback: Look for Like/Comment if Share missing
     for(let btn of buttons) {
-        const txt = btn.innerText || btn.getAttribute('aria-label') || '';
-        if(txt === 'Like' || txt === 'Comment') {
+        const txt = (btn.innerText || btn.getAttribute('aria-label') || '').trim();
+        if (/\d/.test(txt)) continue;
+
+        if(txt === 'Like' || txt === 'Comment' || txt === 'אהבתי' || txt === 'תגובה') {
            let parent = btn.parentElement;
            while(parent && parent !== post) {
-             if(parent.querySelectorAll('div[role="button"]').length >= 2) {
+             if(parent.querySelectorAll('div[role="button"], span[role="button"], button').length >= 2) {
                return parent; 
              }
              parent = parent.parentElement;
@@ -222,6 +245,12 @@ function findMainPostContext(postElement) {
   }
   
   if (!root) return null;
+
+  // 1a. Best Effort: Look for data-ad-rendering-role="description" (User provided structure)
+  const descriptionElement = root.querySelector('[data-ad-rendering-role="description"], [data-ad-rendering-role="story_message"]');
+  if (descriptionElement && descriptionElement.innerText && descriptionElement.innerText.length > 10) {
+      return descriptionElement.innerText;
+  }
   
   // 2. Find Main Action Bar (boundary)
   const actionBar = findActionBar(root);
