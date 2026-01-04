@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Social Police - User Rankings</title>
+  <style>
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f0f2f5; }
+    .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    h1 { color: #1c1e21; text-align: center; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+    th { background-color: #4267B2; color: white; }
+    tr:hover { background-color: #f5f6f7; }
+    .actions { margin-bottom: 20px; text-align: right; }
+    button { padding: 10px 15px; background-color: #42b72a; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
+    button:hover { background-color: #36a420; }
+    button.clear { background-color: #d9534f; margin-left: 10px; }
+    button.clear:hover { background-color: #c9302c; }
+    .score-high { color: red; font-weight: bold; }
+    .score-med { color: orange; font-weight: bold; }
+    .score-low { color: green; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>👮 Social Police Ranking Sheet</h1>
+    
+    <div class="actions">
+      <button id="exportBtn">Download CSV</button>
+      <button id="clearBtn" class="clear">Clear Data</button>
+    </div>
+
+    <table id="rankingTable">
+      <thead>
+        <tr>
+          <th>User Name</th>
+          <th>Posts Checked</th>
+          <th>AI Suspicions (>50%)</th>
+          <th>Misinformation</th>
+          <th>AI Ratio</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Rows will be inserted here -->
+      </tbody>
+    </table>
+    
+    <p id="noData" style="text-align: center; color: #666; display: none;">No data collected yet. Start analyzing posts!</p>
+  </div>
+  <script src="dashboard.js"></script>
+</body>
+</html>
+
