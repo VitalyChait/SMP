@@ -323,7 +323,31 @@ function showResultOverlay(postElement, data, btn) {
 
   const actionBar = findActionBar(postElement);
   if (actionBar) {
-    actionBar.parentElement.insertBefore(overlay, actionBar);
+    // Attempt to find the "Like/Comment/Share" bar specifically
+    // The previous logic pushed it after the "Action Bar", but "Action Bar" finding is heuristic.
+    // The user wants it specifically BELOW the "Share" button/row.
+    // The structure provided shows a container with comments/share counts.
+    // The actual "Like/Comment/Share" buttons are usually in a sibling container below the counts.
+    // We want to be at the very bottom of the post "card" structure, just before comments start.
+    
+    // Strategy: Look for the container that holds the buttons.
+    // If actionBar is that container, append after it.
+    // If actionBar is inside a wrapper that holds both counts and buttons, append to that wrapper.
+    
+    // Heuristic: Go up to the direct child of the main post container (role=article or feed div)
+    let container = actionBar;
+    while(container.parentElement && container.parentElement !== postElement) {
+        container = container.parentElement;
+    }
+    
+    // Now we are at the top-level child of the post.
+    // If we append here, we are at the end of the post content.
+    // This usually places it after the share button row and before comments (which are often loaded dynamically or in a separate sibling structure in some views, but usually inside the same feed unit).
+    if (container.nextSibling) {
+        postElement.insertBefore(overlay, container.nextSibling);
+    } else {
+        postElement.appendChild(overlay);
+    }
   } else {
     postElement.appendChild(overlay);
   }
