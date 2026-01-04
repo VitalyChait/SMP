@@ -1,8 +1,8 @@
 // Content Script for Facebook Social Police
 
 // Selectors
-const POST_SELECTOR = 'div[role="feed"] > div, div[role="article"], div[role="main"] div[role="feed"] > div'; 
-const TEXT_SELECTOR = 'div[dir="auto"], span[dir="auto"]'; 
+const POST_SELECTOR = 'div[role="feed"] > div, div[role="article"], div[role="main"] div[role="feed"] > div, div.x1yztbdb.x1n2onr6.xh8yej3.x1ja2u2z'; 
+const TEXT_SELECTOR = 'div[dir="auto"], span[dir="auto"], div.x11i5rnm.xat24cr.x1mh8g0r.x1vvkbs.xtlvy1s'; 
 const PROCESSED_ATTR = 'data-social-police-processed';
 
 let isEnabled = true;
@@ -67,9 +67,11 @@ function processPosts() {
   posts.forEach(post => {
     if (post.hasAttribute(PROCESSED_ATTR)) return;
     
+    // 1. Identify if this is a real post (has text or image)
     const content = extractPostContent(post);
     if (!content.text && !content.imageSrc) return;
 
+    // 2. Find Action Bar to inject button
     const actionBar = findActionBar(post);
     
     if (actionBar) {
@@ -77,18 +79,64 @@ function processPosts() {
       post.setAttribute(PROCESSED_ATTR, 'true');
     }
   });
+
+  // Fallback: Bottom-up discovery by Action Bar
+  const actionBars = document.querySelectorAll('div[role="group"]');
+  actionBars.forEach(bar => {
+     // Basic check if it looks like a social action bar
+     if (bar.querySelectorAll('div[role="button"]').length >= 2) {
+       // Traverse up to find a container that hasn't been processed
+       let candidate = bar.parentElement;
+       let depth = 0;
+       while(candidate && depth < 5) {
+         if (candidate.getAttribute('role') === 'article') break;
+         if (candidate.querySelector(TEXT_SELECTOR)) {
+            break;
+         }
+         candidate = candidate.parentElement;
+         depth++;
+       }
+
+       if (candidate && !candidate.hasAttribute(PROCESSED_ATTR)) {
+         const content = extractPostContent(candidate);
+         if (content.text || content.imageSrc) {
+           injectButton(bar.parentElement, candidate); 
+           candidate.setAttribute(PROCESSED_ATTR, 'true');
+         }
+       }
+     }
+  });
 }
 
 function extractPostContent(postElement) {
-  const textElements = postElement.querySelectorAll(TEXT_SELECTOR);
+  // Text Extraction
+  // 1. Try standard selectors
   let text = '';
-  textElements.forEach(el => {
-    if (el.offsetParent !== null && el.innerText.length > 5) {
-       if (!text.includes(el.innerText)) {
-         text += el.innerText + '\n';
-       }
-    }
-  });
+  const textElements = postElement.querySelectorAll(TEXT_SELECTOR);
+  
+  // 2. Specialized extraction for "single post" views which are deeply nested
+  // The provided HTML snippet shows text in divs with 'dir="auto"' and 'style="text-align: start;"'
+  // and specific classes like 'xdj266r x14z9mp...'
+  if (textElements.length === 0) {
+      // Fallback: search for any div with dir="auto" that has text content
+      const fallbackTexts = postElement.querySelectorAll('div[dir="auto"], span[dir="auto"]');
+      fallbackTexts.forEach(el => {
+        // Exclude hidden elements or common UI noise
+        if (el.innerText && el.innerText.length > 5 && !el.closest('h2') && !el.closest('h3')) {
+             if (!text.includes(el.innerText)) {
+                 text += el.innerText + '\n';
+             }
+        }
+      });
+  } else {
+      textElements.forEach(el => {
+        if (el.offsetParent !== null && el.innerText.length > 5) {
+           if (!text.includes(el.innerText)) {
+             text += el.innerText + '\n';
+           }
+        }
+      });
+  }
 
   const images = postElement.querySelectorAll('img');
   let validImageSrc = null;
