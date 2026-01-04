@@ -236,16 +236,18 @@ function showResultOverlay(postElement, data, btn) {
   // Normalize rating string to lowercase for comparison
   const rating = (data.overall_rating || '').toLowerCase();
 
-  // Green: Truthful / Factual
-  if (rating.includes('truthful') || rating.includes('factual') || (data.is_factual === true && !rating.includes('opinion'))) {
-    factBg = GREEN;
+  // Explicit priority for colors
+  if (rating.includes('opinion') || rating.includes('satire')) {
+    factBg = YELLOW;
   } 
-  // Red: False / Misleading
   else if (rating.includes('false') || rating.includes('misleading') || data.is_factual === false) {
     factBg = RED;
   } 
-  // Yellow: Opinion, Satire, or Unknown (default)
+  else if (rating.includes('truthful') || rating.includes('factual') || data.is_factual === true) {
+    factBg = GREEN;
+  } 
   else {
+    // Unknown fallback
     factBg = YELLOW;
   }
 

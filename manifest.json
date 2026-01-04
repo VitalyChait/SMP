@@ -1,7 +1,7 @@
 {
-  "manifest_version": 3,
+  "manifest_version": 4,
   "name": "Facebook Social Police",
-  "version": "1.2",
+  "version": "1.4",
   "description": "Fact checker and AI detector for Facebook posts",
   "permissions": [
     "storage",
