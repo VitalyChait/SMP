@@ -29,14 +29,15 @@
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   font-family: sans-serif;
-  z-index: 1; 
-  /* Changed back to static/block flow to push content down */
   position: relative; 
-  margin: 10px 15px; /* Add margin to separate from content */
-  width: auto;
-  max-width: 100%;
+  margin: 12px 0 5px 0; /* Top margin for separation */
+  width: 100%;
+  box-sizing: border-box; /* Ensure padding doesn't overflow width */
   animation: fadeIn 0.3s ease-in;
   clear: both; /* Ensure it doesn't sit next to floated elements */
+  display: block;
+  min-width: 100%; /* Force full width in flex containers */
+  flex-basis: 100%; /* Force line break in flex-wrap */
 }
 
 .sp-overlay-content {
