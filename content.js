@@ -10,15 +10,13 @@ let isEnabled = true;
 function init() {
   console.log('Social Police: Content script loaded');
   
-  // Load initial state
   chrome.storage.local.get(['is_enabled'], (result) => {
-    isEnabled = result.is_enabled !== false; // Default true
+    isEnabled = result.is_enabled !== false; 
     if (isEnabled) {
       observeFeed();
     }
   });
 
-  // Listen for changes
   chrome.storage.onChanged.addListener((changes, namespace) => {
     if (namespace === 'local' && changes.is_enabled) {
       isEnabled = changes.is_enabled.newValue;
@@ -57,7 +55,6 @@ function removeButtons() {
   const buttons = document.querySelectorAll('.sp-analyze-btn, .sp-btn-wrapper');
   buttons.forEach(btn => btn.remove());
   
-  // Also reset processed attributes so they can be re-added if enabled again
   const posts = document.querySelectorAll(`[${PROCESSED_ATTR}]`);
   posts.forEach(post => post.removeAttribute(PROCESSED_ATTR));
 }
@@ -70,11 +67,9 @@ function processPosts() {
   posts.forEach(post => {
     if (post.hasAttribute(PROCESSED_ATTR)) return;
     
-    // 1. Identify if this is a real post (has text or image)
     const content = extractPostContent(post);
     if (!content.text && !content.imageSrc) return;
 
-    // 2. Find Action Bar to inject button
     const actionBar = findActionBar(post);
     
     if (actionBar) {
@@ -85,7 +80,6 @@ function processPosts() {
 }
 
 function extractPostContent(postElement) {
-  // Text Extraction
   const textElements = postElement.querySelectorAll(TEXT_SELECTOR);
   let text = '';
   textElements.forEach(el => {
@@ -96,7 +90,6 @@ function extractPostContent(postElement) {
     }
   });
 
-  // Image Extraction
   const images = postElement.querySelectorAll('img');
   let validImageSrc = null;
   let maxArea = 0;
@@ -147,7 +140,7 @@ function injectButton(container, postElement) {
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
     e.preventDefault();
-    analyzePost(postElement, btn);
+    toggleAnalysis(postElement, btn);
   });
 
   const wrapper = document.createElement('div');
@@ -156,7 +149,17 @@ function injectButton(container, postElement) {
   container.appendChild(wrapper);
 }
 
-function analyzePost(postElement, btn) {
+function toggleAnalysis(postElement, btn) {
+  // Check if result already exists
+  const existing = postElement.querySelector('.sp-result-overlay');
+  if (existing) {
+    existing.remove();
+    btn.innerText = '👮 Analyze';
+    btn.classList.remove('sp-btn-remove'); // Optional style change
+    return;
+  }
+
+  // If not existing, start analysis
   const content = extractPostContent(postElement);
   
   if (!content.text && !content.imageSrc) {
@@ -164,7 +167,6 @@ function analyzePost(postElement, btn) {
     return;
   }
 
-  // Extract username
   let username = 'Unknown User';
   const headerLinks = postElement.querySelectorAll('h2 a, h3 a, h4 a, strong a, span > a[role="link"]');
   for(let link of headerLinks) {
@@ -192,17 +194,18 @@ function analyzePost(postElement, btn) {
       username: username
     }, (response) => {
       btn.disabled = false;
-      btn.innerText = '👮 Analyze';
       
       if (chrome.runtime.lastError) {
         alert('Connection Error: ' + chrome.runtime.lastError.message + '\nPlease refresh the page.');
+        btn.innerText = '👮 Analyze';
         return;
       }
 
       if (response && response.error) {
         alert('Error: ' + response.error);
+        btn.innerText = '👮 Analyze';
       } else if (response && response.data) {
-        showResultOverlay(postElement, response.data);
+        showResultOverlay(postElement, response.data, btn);
       }
     });
   } catch (e) {
@@ -212,30 +215,37 @@ function analyzePost(postElement, btn) {
   }
 }
 
-function showResultOverlay(postElement, data) {
+function showResultOverlay(postElement, data, btn) {
+  // Update Button State
+  btn.innerText = '❌ Remove Analysis';
+  btn.classList.add('sp-btn-remove');
+
   const existing = postElement.querySelector('.sp-result-overlay');
   if (existing) existing.remove();
 
   const overlay = document.createElement('div');
   overlay.className = 'sp-result-overlay';
   
-  // Logic for 3 colors based on user request
-  // Red: High AI (>50%) OR Incorrect Facts (False/Misleading)
-  // Yellow: Hard to tell (Opinion/Satire) OR No facts included OR Medium AI (30-50% maybe?) - User said "hard to tell or have no facts"
-  // Green: High Human (<30% AI) AND Facts Correct (Truthful)
-
-  // Default colors
+  // Standardize Colors
   const RED = '#ffcccc';
   const YELLOW = '#fff3cd';
   const GREEN = '#ccffcc';
 
-  let factBg = YELLOW;
-  if (data.is_factual === true || data.overall_rating === 'Truthful') {
+  let factBg = YELLOW; // Default (Opinion/Satire/Unknown)
+
+  // Normalize rating string to lowercase for comparison
+  const rating = (data.overall_rating || '').toLowerCase();
+
+  // Green: Truthful / Factual
+  if (rating.includes('truthful') || rating.includes('factual') || (data.is_factual === true && !rating.includes('opinion'))) {
     factBg = GREEN;
-  } else if (data.is_factual === false || data.overall_rating === 'False' || data.overall_rating === 'Misleading') {
+  } 
+  // Red: False / Misleading
+  else if (rating.includes('false') || rating.includes('misleading') || data.is_factual === false) {
     factBg = RED;
-  } else {
-    // Opinion, Satire, or Unknown -> Yellow
+  } 
+  // Yellow: Opinion, Satire, or Unknown (default)
+  else {
     factBg = YELLOW;
   }
 
@@ -244,9 +254,6 @@ function showResultOverlay(postElement, data) {
     aiBg = RED;
   } else if (data.ai_probability < 30) {
     aiBg = GREEN;
-  } else {
-    // 30-50% range -> Yellow (Hard to tell)
-    aiBg = YELLOW;
   }
 
   overlay.innerHTML = `
@@ -264,22 +271,18 @@ function showResultOverlay(postElement, data) {
     </div>
   `;
 
-  // Find Action Bar to insert BEFORE it
   const actionBar = findActionBar(postElement);
   if (actionBar) {
-    // Insert before the action bar to push it and comments down
-    // We try to insert into the parent of the action bar if possible, 
-    // or just before the action bar element itself.
-    // Usually actionBar is a child of the main post container (or nested deep).
-    // If we insert before actionBar, we are inside the structure.
     actionBar.parentElement.insertBefore(overlay, actionBar);
   } else {
-    // Fallback: Append to end of post element
     postElement.appendChild(overlay);
   }
 
   overlay.querySelector('.sp-close-btn').addEventListener('click', () => {
     overlay.remove();
+    // Also reset button if closed via X
+    btn.innerText = '👮 Analyze';
+    btn.classList.remove('sp-btn-remove');
   });
 }
 
