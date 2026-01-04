@@ -162,20 +162,47 @@ function extractPostContent(postElement) {
 }
 
 function findActionBar(post) {
+    // Strategy: Look for the specific Share button role/text to anchor ourselves
+    // We want the container that holds the Like/Comment/Share buttons.
+    // The user provided structure shows the buttons are in a flex/grid row.
+    // The user wants to inject INTO this row, after the existing elements.
+    
+    // We search for elements that look like the 'Share' or 'Like' action button.
     const buttons = post.querySelectorAll('div[role="button"]');
     for(let btn of buttons) {
         const txt = btn.innerText || btn.getAttribute('aria-label') || '';
-        if(txt.includes('Like') || txt.includes('Comment') || txt.includes('Share')) {
+        // "Share" is usually unique enough and at the end of the list
+        if(txt === 'Share' || txt === 'Send' || txt.includes('Share')) {
+           let parent = btn.parentElement;
+           // Traverse up to find the row container.
+           // In the provided snippet, the buttons are in a flex container.
+           // We just need to find the parent that contains multiple buttons.
+           while(parent && parent !== post) {
+             if(parent.querySelectorAll('div[role="button"]').length >= 2) {
+               return parent; 
+             }
+             parent = parent.parentElement;
+           }
+           // Fallback if structure is flat
+           return btn.parentElement.parentElement;
+        }
+    }
+    
+    // Fallback search for Like/Comment if Share not found
+    for(let btn of buttons) {
+        const txt = btn.innerText || btn.getAttribute('aria-label') || '';
+        if(txt === 'Like' || txt === 'Comment') {
            let parent = btn.parentElement;
            while(parent && parent !== post) {
              if(parent.querySelectorAll('div[role="button"]').length >= 2) {
-               return parent;
+               return parent; 
              }
              parent = parent.parentElement;
            }
            return btn.parentElement.parentElement;
         }
     }
+    
     return null;
 }
 
@@ -185,6 +212,10 @@ function injectButton(container, postElement) {
   btn.innerText = '👮 Analyze';
   btn.title = 'Check for misinformation and AI content';
   
+  // Style adjustment to fit into the action bar seamlessly
+  btn.style.marginTop = '0';
+  btn.style.marginBottom = '0';
+  
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
     e.preventDefault();
@@ -193,7 +224,13 @@ function injectButton(container, postElement) {
 
   const wrapper = document.createElement('div');
   wrapper.className = 'sp-btn-wrapper';
+  // Adjust wrapper style to match flex items if needed
+  wrapper.style.display = 'flex';
+  wrapper.style.alignItems = 'center';
+  
   wrapper.appendChild(btn);
+  
+  // Insert at the end of the action bar container (after "Share")
   container.appendChild(wrapper);
 }
 
@@ -203,7 +240,7 @@ function toggleAnalysis(postElement, btn) {
   if (existing) {
     existing.remove();
     btn.innerText = '👮 Analyze';
-    btn.classList.remove('sp-btn-remove'); // Optional style change
+    btn.classList.remove('sp-btn-remove');
     return;
   }
 
@@ -215,6 +252,7 @@ function toggleAnalysis(postElement, btn) {
     return;
   }
 
+  // Find user name
   let username = 'Unknown User';
   const headerLinks = postElement.querySelectorAll('h2 a, h3 a, h4 a, strong a, span > a[role="link"]');
   for(let link of headerLinks) {
@@ -224,6 +262,7 @@ function toggleAnalysis(postElement, btn) {
       }
   }
 
+  // ... rest of function ...
   btn.innerText = 'Analyzing...';
   btn.disabled = true;
 
