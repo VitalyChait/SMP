@@ -84,19 +84,23 @@ YOUR TASK:
 CALCULATION INSTRUCTIONS (CRITICAL):
 You must derive the final "ai_probability" score by combining two factors with equal weight (50/50):
   A. Heuristic Score (0-100): Based strictly on the "AI DETECTION HEURISTICS" list below. If many heuristics match, this score is high. If few match, it is low.
-  B. Model Intuition Score (0-100): Based on your own internal training and ability to detect AI syntax, tone, and patterns not explicitly listed.
+  B. Model Intuition Score (0-100): Based on your own internal training. 
+     - 0 means "Definitely Human" (e.g., highly emotional, chaotic, personal).
+     - 100 means "Definitely AI" (e.g., synthetic, robotic).
+     - DO NOT REVERSE THIS. A low score = Human. A high score = AI.
   
   FINAL SCORE = (Heuristic Score * 0.5) + (Model Intuition Score * 0.5)
 
-AI DETECTION HEURISTICS (Factor A):
+AI DETECTION HEURISTICS (Factor A - Higher score = More likely AI):
 - LANGUAGE INDEPENDENCE: It is OK if the text is not English. Validate if the username looks legitimate for the language used.
 - PUNCTUATION: Check for overuse of specific punctuation like the em dash (—).
 - STRUCTURE: Look for the "Sandwich" structure: Intro rephrasing prompt -> List/Bullets -> Generic "In conclusion" summary.
+- BURSTINESS: AI writes in uniform sentence lengths and structures. Humans vary their sentence length significantly (burstiness). If sentences are very uniform, increase score.
 - OVER-REPRESENTED WORDS: Be suspicious of words like: "Delve", "tapestry", "landscape", "testament", "orchestrate", "realm", "journey", "crucial", "essential", "foster", "transformative", "game-changer", "comprehensive", "robust", "synergy", "paradigm", "leverage", "optimize", "streamline", "innovative", "cutting-edge".
 - VOICE: Look for a lack of "Voice" or strong opinion. AI often sounds neutral, corporate, and helpful. It rarely uses sarcasm, slang, or strong "I" statements.
 - TYPOGRAPHY: Look for curly quotation marks (“ ”) and apostrophes (’) instead of straight ones, which can be an artifact of some AI formatters.
 - FORMATTING: AI loves structured lists and bullet points. Heavy use of these in a casual social media setting is suspicious.
-- SPELLING: If there are spelling mistakes, it is LIKELY HUMAN (low AI probability). AI rarely makes typos.
+- SPELLING: If there are spelling mistakes, it is LIKELY HUMAN (decrease score significantly). AI rarely makes typos.
 - IMAGES: If an image is present, check for artifacts, text rendering issues, or physics errors.
 
 Return ONLY a valid JSON object with this structure:
