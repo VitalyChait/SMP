@@ -234,6 +234,21 @@ function findActionBar(post) {
            while(parent && parent !== post && levels < 5) {
              // Case A: Found a group with multiple buttons
              if(parent.querySelectorAll('div[role="button"], span[role="button"], button').length >= 2) {
+               const btns = parent.querySelectorAll('div[role="button"], span[role="button"], button');
+               const txts = Array.from(btns).map(b => (b.innerText || b.getAttribute('aria-label') || '').trim().toLowerCase());
+               
+               const hasLike = txts.some(t => t === 'like' || t === 'אהבתי');
+               const hasReact = txts.some(t => t === 'react');
+               const hasReply = txts.some(t => t === 'reply' || t === 'תגובה' || t === 'comment');
+               const hasShare = txts.some(t => t === 'share' || t === 'שתף' || t === 'send');
+
+               // If we have Like and React, but NOT Reply or Share, skip this level as it's likely the inner Like wrapper
+               if (hasLike && hasReact && !hasReply && !hasShare) {
+                   parent = parent.parentElement;
+                   levels++;
+                   continue;
+               }
+
                return parent; 
              }
              
@@ -400,6 +415,23 @@ function injectButton(container, postElement) {
           li.appendChild(wrapper);
           container.appendChild(li);
           return; // Done
+      } else {
+          // If it's not a UL (like in the user's example where it's a div with class x6s0dn4 x3nfvp2 wrapping a UL),
+          // we might want to append to the list inside it if possible
+          const ul = container.querySelector('ul');
+          if (ul) {
+              const li = document.createElement('li');
+              const siblingLi = ul.querySelector('li');
+              if (siblingLi) {
+                  li.className = siblingLi.className;
+              } else {
+                  li.className = 'html-li xdj266r xat24cr xexx8yu xyri2b x18d9i69 x1c1uobl x1rg5ohu x1xegmmw x13fj5qh';
+              }
+              wrapper.style.display = 'inline-flex';
+              li.appendChild(wrapper);
+              ul.appendChild(li);
+              return;
+          }
       }
   }
 
