@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Facebook Social Police",
-  "version": "1.13",
+  "name": "Facebook Social Media Police",
+  "version": "1.14",
   "description": "Fact checker and AI detector for Facebook posts",
   "permissions": [
     "storage",
@@ -27,7 +27,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Social Police"
+    "default_title": "Social Media Police"
   },
   "icons": {
     "16": "icons/icon16.png",

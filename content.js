@@ -1,4 +1,4 @@
-// Content Script for Facebook Social Police
+// Content Script for Facebook Social Media Police
 
 // Selectors
 const POST_SELECTOR = 'div[role="feed"] > div, div[role="article"], div[role="main"] div[role="feed"] > div, div.x1yztbdb.x1n2onr6.xh8yej3.x1ja2u2z'; 
@@ -8,7 +8,7 @@ const PROCESSED_ATTR = 'data-social-police-processed';
 let isEnabled = true;
 
 function init() {
-  console.log('Social Police: Content script loaded');
+  console.log('Social Media Police: Content script loaded');
   
   chrome.storage.local.get(['is_enabled'], (result) => {
     isEnabled = result.is_enabled !== false; 
@@ -301,6 +301,11 @@ function findMainPostContext(postElement) {
 }
 
 function injectButton(container, postElement) {
+  // Prevent duplicate injection
+  if (container.querySelector('.sp-analyze-btn') || container.querySelector('.sp-btn-wrapper')) {
+    return;
+  }
+
   const btn = document.createElement('button');
   btn.className = 'sp-analyze-btn';
   btn.innerText = '👮 Analyze';

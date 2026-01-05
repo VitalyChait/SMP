@@ -140,7 +140,7 @@ async function callOpenAICompatible(apiKey, provider, text, imageBase64, mimeTyp
     url = 'https://openrouter.ai/api/v1/chat/completions';
     model = customModel || 'openai/gpt-4o-mini';
     headers['HTTP-Referer'] = 'https://github.com/vitaly/social-policy';
-    headers['X-Title'] = 'Social Police Extension';
+    headers['X-Title'] = 'Social Media Police Extension';
   }
 
   let messages;
