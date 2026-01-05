@@ -1,5 +1,5 @@
 /* Social Media Police Styles */
-.sp-analyze-btn {
+.smp-analyze-btn {
   background-color: #ffffff;
   color: #65686C;
   border: none;
@@ -13,16 +13,16 @@
   white-space: nowrap;
 }
 
-.sp-analyze-btn:hover {
+.smp-analyze-btn:hover {
   background-color: #F2F2F2 !important;
 }
 
-.sp-btn-wrapper {
+.smp-btn-wrapper {
   display: inline-block;
   vertical-align: middle;
 }
 
-.sp-result-overlay {
+.smp-result-overlay {
   background: white; 
   border: 1px solid #ccc; 
   padding: 0;
@@ -40,17 +40,17 @@
   flex-basis: 100%; /* Force line break in flex-wrap */
 }
 
-.sp-overlay-content {
+.smp-overlay-content {
   padding: 15px;
 }
 
-.sp-section {
+.smp-section {
   margin-bottom: 8px; 
   padding: 8px; 
   border-radius: 4px;
 }
 
-.sp-close-btn {
+.smp-close-btn {
   background: #eee; 
   border: 1px solid #ccc; 
   padding: 5px 10px; 
@@ -58,7 +58,7 @@
   border-radius: 4px;
   margin-top: 5px;
 }
-.sp-close-btn:hover {
+.smp-close-btn:hover {
   background: #ddd;
 }
 

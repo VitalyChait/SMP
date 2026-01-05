@@ -52,7 +52,7 @@ function observeFeed() {
 }
 
 function removeButtons() {
-  const buttons = document.querySelectorAll('.sp-analyze-btn, .sp-btn-wrapper');
+  const buttons = document.querySelectorAll('.smp-analyze-btn, .smp-btn-wrapper');
   buttons.forEach(btn => btn.remove());
   
   const posts = document.querySelectorAll(`[${PROCESSED_ATTR}]`);
@@ -148,6 +148,17 @@ function extractPostContent(postElement) {
           });
       }
   }
+  
+  // 3. Special Case: Pop-up window post content (often missing standard selectors)
+  if (text.length < 10) {
+      // Look for the main message container in the popup structure provided
+      // Usually it's in a div with multiple text spans that might not have dir="auto"
+      // or are structured differently
+      const potentialMessage = postElement.querySelector('.x1l90r2v.x1iorvi4.x1g0dm76.xpdmqnj, .x11i5rnm.xat24cr.x1mh8g0r.x1vvkbs.xtlvy1s');
+      if (potentialMessage && potentialMessage.innerText && potentialMessage.innerText.length > 10) {
+           text = potentialMessage.innerText;
+      }
+  }
 
   const images = postElement.querySelectorAll('img');
   let validImageSrc = null;
@@ -236,6 +247,17 @@ function findActionBar(post) {
                  }
              }
 
+             // Case C: Pop-up window action bar (from user example)
+             // Structure: x6s0dn4 xi81zsa x78zum5 x6prxxf x13a6bvl xvq8zen xdj266r xat24cr x1c1uobl xyri2b x80vd3b x1q0q8m5 xso031l x1diwwjn xbmvrgn x10b6aqq x1yrsyyn
+             if (parent.classList.contains('x6s0dn4') && parent.classList.contains('xi81zsa') && parent.classList.contains('x78zum5')) {
+                 return parent;
+             }
+             
+             // Case D: Another variation of the action bar wrapper seen in popups
+             if (parent.classList.contains('x1n2onr6') && parent.querySelector('.x6s0dn4.xi81zsa.x78zum5')) {
+                  return parent.querySelector('.x6s0dn4.xi81zsa.x78zum5');
+             }
+
              parent = parent.parentElement;
              levels++;
            }
@@ -320,12 +342,12 @@ function findMainPostContext(postElement) {
 
 function injectButton(container, postElement) {
   // Prevent duplicate injection
-  if (container.querySelector('.sp-analyze-btn') || container.querySelector('.sp-btn-wrapper')) {
+  if (container.querySelector('.smp-analyze-btn') || container.querySelector('.smp-btn-wrapper')) {
     return;
   }
 
   const btn = document.createElement('button');
-  btn.className = 'sp-analyze-btn';
+  btn.className = 'smp-analyze-btn';
   btn.innerText = '👮 Analyze';
   btn.title = 'Check for misinformation and AI content';
   
@@ -340,27 +362,61 @@ function injectButton(container, postElement) {
   });
 
   const wrapper = document.createElement('div');
-  wrapper.className = 'sp-btn-wrapper';
+  wrapper.className = 'smp-btn-wrapper';
   // Adjust wrapper style to match flex items if needed
   wrapper.style.display = 'flex';
   wrapper.style.alignItems = 'center';
   
   wrapper.appendChild(btn);
   
+  // SPECIAL HANDLING: Check for comment layout (Action Links like Like/Reply/Edited)
+  // The provided 'Before' example shows a list of action links in a <ul> or similar structure.
+  // The 'After' example shows the button appended cleanly.
+  
+  // 1. Identify if 'container' is part of a comment action list.
+  // Facebook comments often use <ul> or <div> with role="toolbar" or similar for actions.
+  // The structure often looks like: <ul><li>Like</li><li>Reply</li>...</ul>
+  
+  const isCommentActionList = container.tagName === 'UL' || 
+                              (container.classList.contains('x6s0dn4') && container.classList.contains('x3nfvp2')) ||
+                              container.querySelector('li');
+
+  if (isCommentActionList) {
+      // If it's a list (UL), we should probably add a LI to hold our button to match structure
+      if (container.tagName === 'UL') {
+          const li = document.createElement('li');
+          // Copy classes from a sibling li if possible to match styling
+          const siblingLi = container.querySelector('li');
+          if (siblingLi) {
+              li.className = siblingLi.className;
+          } else {
+              // Fallback classes if no sibling found (based on user example)
+              li.className = 'html-li xdj266r xat24cr xexx8yu xyri2b x18d9i69 x1c1uobl x1rg5ohu x1xegmmw x13fj5qh';
+          }
+          
+          // Remove potential interfering styles from the wrapper if inside an LI
+          wrapper.style.display = 'inline-flex'; 
+          
+          li.appendChild(wrapper);
+          container.appendChild(li);
+          return; // Done
+      }
+  }
+
   // Insert at the end of the action bar container (after "Share")
   container.appendChild(wrapper);
 }
 
 function toggleAnalysis(postElement, btn) {
   // Check if result already exists
-  const overlayId = btn.getAttribute('data-sp-overlay-id');
-  const existing = overlayId ? document.getElementById(overlayId) : postElement.querySelector('.sp-result-overlay');
+  const overlayId = btn.getAttribute('data-smp-overlay-id');
+  const existing = overlayId ? document.getElementById(overlayId) : postElement.querySelector('.smp-result-overlay');
   
   if (existing) {
     existing.remove();
     btn.innerText = '👮 Analyze';
-    btn.classList.remove('sp-btn-remove');
-    btn.removeAttribute('data-sp-overlay-id');
+    btn.classList.remove('smp-btn-remove');
+    btn.removeAttribute('data-smp-overlay-id');
     return;
   }
 
@@ -429,13 +485,13 @@ function toggleAnalysis(postElement, btn) {
 function showResultOverlay(postElement, data, btn, username) {
   // Update Button State
   btn.innerText = '❌ Remove Analysis';
-  btn.classList.add('sp-btn-remove');
+  btn.classList.add('smp-btn-remove');
 
-  const existing = postElement.querySelector('.sp-result-overlay');
+  const existing = postElement.querySelector('.smp-result-overlay');
   if (existing) existing.remove();
 
   const overlay = document.createElement('div');
-  overlay.className = 'sp-result-overlay';
+  overlay.className = 'smp-result-overlay';
   
   // Standardize Colors
   const RED = '#ffcccc';
@@ -470,23 +526,23 @@ function showResultOverlay(postElement, data, btn, username) {
   }
 
   overlay.innerHTML = `
-    <div class="sp-overlay-content">
+    <div class="smp-overlay-content">
       <h3>Analysis Result for ${username || 'Unknown User'}</h3>
-      <div class="sp-section" style="background: ${factBg}">
+      <div class="smp-section" style="background: ${factBg}">
         <strong>Fact Rating:</strong> ${data.overall_rating} <br>
         <small>${data.fact_check_details}</small>
       </div>
-      <div class="sp-section" style="background: ${aiBg}">
+      <div class="smp-section" style="background: ${aiBg}">
         <strong>AI Probability:</strong> ${data.ai_probability}% <br>
         <small>${data.ai_reasoning}</small>
       </div>
-      <button class="sp-close-btn">Close</button>
+      <button class="smp-close-btn">Close</button>
     </div>
   `;
 
-  const uniqueId = 'sp-overlay-' + Math.random().toString(36).substr(2, 9);
+  const uniqueId = 'smp-overlay-' + Math.random().toString(36).substr(2, 9);
   overlay.id = uniqueId;
-  btn.setAttribute('data-sp-overlay-id', uniqueId);
+  btn.setAttribute('data-smp-overlay-id', uniqueId);
 
   const actionBar = findActionBar(postElement);
   let targetContainer = postElement;
@@ -547,12 +603,12 @@ function showResultOverlay(postElement, data, btn, username) {
        }
   }
 
-  overlay.querySelector('.sp-close-btn').addEventListener('click', () => {
+  overlay.querySelector('.smp-close-btn').addEventListener('click', () => {
     overlay.remove();
     // Also reset button if closed via X
     btn.innerText = '👮 Analyze';
-    btn.classList.remove('sp-btn-remove');
-    btn.removeAttribute('data-sp-overlay-id');
+    btn.classList.remove('smp-btn-remove');
+    btn.removeAttribute('data-smp-overlay-id');
   });
 }
 
