@@ -96,15 +96,26 @@ You must derive the final "ai_probability" score by combining two factors with e
 
 AI DETECTION HEURISTICS (Factor A - Higher score = More likely AI):
 - LANGUAGE INDEPENDENCE: It is OK if the text is not English. Validate if the username looks legitimate for the language used.
-- PUNCTUATION: Check for overuse of specific punctuation like the em dash (—).
-- STRUCTURE: Look for the "Sandwich" structure: Intro rephrasing prompt -> List/Bullets -> Generic "In conclusion" summary.
+- PUNCTUATION: Check for overuse of em dashes (—) or en dashes (–). Overly precise punctuation or avoiding contractions (like "don't"). Perfect grammar and spelling, with no human-like errors.
+- STRUCTURE: Look for the "Sandwich" structure: Intro rephrasing prompt -> List/Bullets -> Generic "In conclusion" summary. Highly structured writing (e.g., hook, three supporting points, call to action) or lists with uniform lengths.
 - BURSTINESS: AI writes in uniform sentence lengths and structures. Humans vary their sentence length significantly (burstiness). If sentences are very uniform, increase score.
-- OVER-REPRESENTED WORDS: Be suspicious of words like: "Delve", "tapestry", "landscape", "testament", "orchestrate", "realm", "journey", "crucial", "essential", "foster", "transformative", "game-changer", "comprehensive", "robust", "synergy", "paradigm", "leverage", "optimize", "streamline", "innovative", "cutting-edge".
-- VOICE: Look for a lack of "Voice" or strong opinion. AI often sounds neutral, corporate, and helpful. It rarely uses sarcasm, slang, or strong "I" statements.
+- OVER-REPRESENTED WORDS: Be suspicious of words like: "Delve", "tapestry", "landscape", "testament", "orchestrate", "realm", "journey", "crucial", "essential", "foster", "transformative", "game-changer", "comprehensive", "robust", "synergy", "paradigm", "leverage", "optimize", "streamline", "innovative", "cutting-edge". Also overuse of transition words like furthermore, however, thus, and therefore.
+- VOICE: Look for a lack of "Voice" or strong opinion. AI often sounds neutral, corporate, and helpful. It rarely uses sarcasm, slang, or strong "I" statements. Generic and over-optimized tone (motivational but lacking personality).
 - TYPOGRAPHY: Look for curly quotation marks (“ ”) and apostrophes (’) instead of straight ones, which can be an artifact of some AI formatters.
 - FORMATTING: AI loves structured lists and bullet points. Heavy use of these in a casual social media setting is suspicious.
 - SPELLING: If there are spelling mistakes, it is LIKELY HUMAN (decrease score significantly). AI rarely makes typos.
 - IMAGES: If an image is present, check for artifacts, text rendering issues, or physics errors.
+- EMOJIS: Overuse or odd use of emojis. Formulaic placement (e.g., "🔥💡 Ready to transform... 🚀") or strange combinations that don't fit the tone.
+- PERSONAL TOUCH: Lack of first-person anecdotes, cultural references, or niche knowledge.
+- CONSISTENCY: Unrealistic consistency in tone and structure across posts (if context allows comparison).
+- EXAMPLES: Overly generalized examples ("Imagine you're running a store...") vs specific real-world details.
+- CONTENT/AUDIENCE MISALIGNMENT: Tone slightly off for the target audience (e.g., formal content for a casual brand).
+- CALLS TO ACTION (CTAs): Every post ending with a generic CTA ("Don't miss out!", "Click link below!"), especially if forced or unrelated.
+- FREQUENCY: Sudden increase in posting frequency with perfectly polished content (if context provided).
+- INSIGHTS: Many polished insights without unique personality or perspective.
+- VISUAL MISMATCH: Polished text with casual/unrelated visuals, or generic stock/AI visuals.
+- REPETITION: Repetitive phrases or reworded content across posts.
+- AI SPECIFIC ARTIFACTS: Mistakes in context ("delve into this opportunity with fire emojis🔥🔥"), AI-generated hashtags, or extra lines/breaks.
 
 Return ONLY a valid JSON object with this structure:
 {
