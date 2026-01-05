@@ -1,7 +1,7 @@
 // Content Script for Facebook Social Media Police
 
 // Selectors
-const POST_SELECTOR = 'div[role="feed"] > div, div[role="article"], div[role="main"] div[role="feed"] > div, div.x1yztbdb.x1n2onr6.xh8yej3.x1ja2u2z'; 
+const POST_SELECTOR = 'div[role="feed"] > div, div[role="article"], div[role="main"] div[role="feed"] > div, div.x1yztbdb.x1n2onr6.xh8yej3.x1ja2u2z, div[role="dialog"] div[role="article"], div[role="dialog"] .x1yztbdb.x1n2onr6.xh8yej3.x1ja2u2z'; 
 const TEXT_SELECTOR = 'div[dir="auto"], span[dir="auto"], div.x11i5rnm.xat24cr.x1mh8g0r.x1vvkbs.xtlvy1s'; 
 const PROCESSED_ATTR = 'data-social-police-processed';
 
@@ -205,7 +205,8 @@ function findActionBar(post) {
     // We want the container that holds the Like/Comment/Share buttons.
     // Use strict matching to avoid "289 shares" or "2.3K likes" (Status Bar).
     
-    const buttons = post.querySelectorAll('div[role="button"], span[role="button"], button');
+    // Expanded selectors to include links which are often used in comments
+    const buttons = post.querySelectorAll('div[role="button"], span[role="button"], button, a[role="button"], a[href="#"]');
     
     // 1. First pass: Look for "Share" or "Send" explicitly WITHOUT numbers
     for(let btn of buttons) {
@@ -214,12 +215,12 @@ function findActionBar(post) {
         if (/\d/.test(txt)) continue;
         
         const lowerTxt = txt.toLowerCase();
-        if(lowerTxt === 'share' || lowerTxt === 'send' || lowerTxt === 'שתף') { // Added Hebrew 'Share' just in case, given Hebrew text in example
+        if(lowerTxt === 'share' || lowerTxt === 'send' || lowerTxt === 'שתף') { 
            let parent = btn.parentElement;
            while(parent && parent !== post) {
              // The action bar usually has 3 buttons (Like, Comment, Share)
              // We check for >= 2 buttons in the container
-             const siblings = parent.querySelectorAll('div[role="button"], span[role="button"], button');
+             const siblings = parent.querySelectorAll('div[role="button"], span[role="button"], button, a[role="button"]');
              if(siblings.length >= 2) {
                  // Double check siblings to ensure they are also actions and not statuses
                  let validActions = 0;
@@ -256,8 +257,9 @@ function findActionBar(post) {
            let levels = 0;
            while(parent && parent !== post && levels < 5) {
              // Case A: Found a group with multiple buttons
-             if(parent.querySelectorAll('div[role="button"], span[role="button"], button').length >= 2) {
-               const btns = parent.querySelectorAll('div[role="button"], span[role="button"], button');
+             // For comments, we prefer UL or specific list containers
+             if(parent.tagName === 'UL' || parent.querySelectorAll('div[role="button"], span[role="button"], button, a[role="button"]').length >= 2) {
+               const btns = parent.querySelectorAll('div[role="button"], span[role="button"], button, a[role="button"]');
                const txts = Array.from(btns).map(b => (b.innerText || b.getAttribute('aria-label') || '').trim().toLowerCase());
                
                const hasLike = txts.some(t => t === 'like' || t === 'אהבתי');
@@ -273,7 +275,14 @@ function findActionBar(post) {
                    continue;
                }
 
-               return parent; 
+               // If this is a UL, it's a very strong candidate for a comment list
+               if (parent.tagName === 'UL' && (hasLike || hasReply)) {
+                   return parent;
+               }
+
+               if (hasLike || hasReply || hasShare) {
+                    return parent; 
+               }
              }
              
              // Case B: Handle the specific single-row layout provided by user where buttons are in separate wrappers
@@ -422,13 +431,31 @@ function injectButton(container, postElement) {
   const isNestedArticle = postElement.parentElement && postElement.parentElement.closest('div[role="article"]');
 
   // Logic to determine if this is a Comment Button or a Post Button
-  // Default to Comment if ambiguous to avoid "Too many post buttons"
-  let isComment = hasReply;
-  let isPost = (hasShare || hasCommentBtn) && !hasReply;
+  // 1. Check if postElement is physically nested inside another element that matches POST_SELECTOR
+  let isNested = false;
+  let p = postElement.parentElement;
+  while(p && p !== document.body) {
+      if (p.matches(POST_SELECTOR) || p.getAttribute('role') === 'article') {
+          isNested = true;
+          break;
+      }
+      p = p.parentElement;
+  }
+
+  // 2. Check Action Bar content for strong signals
+  let isComment = hasReply || isNested;
+  let isPost = (hasShare || hasCommentBtn) && !hasReply && !isNested;
   
+  // 3. Fallback / Safety
   if (!isComment && !isPost) {
-      if (isNestedArticle) isComment = true;
-      else isComment = true; // Default to comment style for safety
+      // If we are in a dialog, and this element is the main article, it's a post.
+      const inDialog = postElement.closest('div[role="dialog"]');
+      if (inDialog && !isNested) {
+         isPost = true;
+      } else {
+         // Default to comment to avoid polluting the UI with big buttons
+         isComment = true;
+      }
   }
 
   const isCommentActionList = isComment || container.tagName === 'UL' || 
