@@ -210,18 +210,36 @@ function findActionBar(post) {
     }
 
     // 2. Fallback: Look for Like/Comment if Share missing
+    // We are more lenient here but still try to ensure we have a group
     for(let btn of buttons) {
         const txt = (btn.innerText || btn.getAttribute('aria-label') || '').trim();
         if (/\d/.test(txt)) continue;
 
         if(txt === 'Like' || txt === 'Comment' || txt === 'אהבתי' || txt === 'תגובה') {
            let parent = btn.parentElement;
-           while(parent && parent !== post) {
+           
+           // Traverse up to 5 levels to find a container with at least 2 action buttons or a specific class signature
+           let levels = 0;
+           while(parent && parent !== post && levels < 5) {
+             // Case A: Found a group with multiple buttons
              if(parent.querySelectorAll('div[role="button"], span[role="button"], button').length >= 2) {
                return parent; 
              }
+             
+             // Case B: Handle the specific single-row layout provided by user where buttons are in separate wrappers
+             // e.g. <div class="x9f619 ..."><div aria-label="Like" ...> ... <div aria-label="Leave a comment" ...>
+             if (parent.classList.contains('x9f619') && parent.classList.contains('x1ja2u2z') && parent.classList.contains('x78zum5') && parent.classList.contains('x1iyjqo2')) {
+                 // This looks like the wrapper for a single action button in that specific layout
+                 // We want the parent of this wrapper which holds all action button wrappers
+                 if (parent.parentElement && parent.parentElement.classList.contains('x9f619') && parent.parentElement.classList.contains('x1ja2u2z')) {
+                     return parent.parentElement;
+                 }
+             }
+
              parent = parent.parentElement;
+             levels++;
            }
+           // Ultimate fallback if we matched the text but couldn't find a group
            return btn.parentElement.parentElement;
         }
     }
