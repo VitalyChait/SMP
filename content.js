@@ -393,7 +393,7 @@ function toggleAnalysis(postElement, btn) {
         alert('Error: ' + response.error);
         btn.innerText = '👮 Analyze';
       } else if (response && response.data) {
-        showResultOverlay(postElement, response.data, btn);
+        showResultOverlay(postElement, response.data, btn, username);
       }
     });
   } catch (e) {
@@ -403,7 +403,7 @@ function toggleAnalysis(postElement, btn) {
   }
 }
 
-function showResultOverlay(postElement, data, btn) {
+function showResultOverlay(postElement, data, btn, username) {
   // Update Button State
   btn.innerText = '❌ Remove Analysis';
   btn.classList.add('sp-btn-remove');
@@ -448,7 +448,7 @@ function showResultOverlay(postElement, data, btn) {
 
   overlay.innerHTML = `
     <div class="sp-overlay-content">
-      <h3>Analysis Result</h3>
+      <h3>Analysis Result for ${username || 'Unknown User'}</h3>
       <div class="sp-section" style="background: ${factBg}">
         <strong>Fact Rating:</strong> ${data.overall_rating} <br>
         <small>${data.fact_check_details}</small>
