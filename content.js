@@ -154,9 +154,26 @@ function extractPostContent(postElement) {
       // Look for the main message container in the popup structure provided
       // Usually it's in a div with multiple text spans that might not have dir="auto"
       // or are structured differently
-      const potentialMessage = postElement.querySelector('.x1l90r2v.x1iorvi4.x1g0dm76.xpdmqnj, .x11i5rnm.xat24cr.x1mh8g0r.x1vvkbs.xtlvy1s');
+      const potentialMessage = postElement.querySelector('.x1l90r2v.x1iorvi4.x1g0dm76.xpdmqnj, .x11i5rnm.xat24cr.x1mh8g0r.x1vvkbs.xtlvy1s, .x193iq5w.x1xwk8fm');
       if (potentialMessage && potentialMessage.innerText && potentialMessage.innerText.length > 10) {
            text = potentialMessage.innerText;
+      }
+      
+      // Fallback: Aggressive search in dialog
+      if (postElement.getAttribute('role') === 'dialog' || postElement.closest('div[role="dialog"]')) {
+           const dialog = postElement.getAttribute('role') === 'dialog' ? postElement : postElement.closest('div[role="dialog"]');
+           // Find largest text block in dialog that isn't comments
+           const allDivs = dialog.querySelectorAll('div, span');
+           let bestText = '';
+           allDivs.forEach(d => {
+               if (d.innerText && d.innerText.length > 20 && d.innerText.length > bestText.length) {
+                   // Filter out common UI text or long threads if possible
+                   if (!d.innerText.includes('Comments') && !d.innerText.includes('Like')) {
+                       bestText = d.innerText;
+                   }
+               }
+           });
+           if (bestText.length > text.length) text = bestText;
       }
   }
 
@@ -196,7 +213,8 @@ function findActionBar(post) {
         // Skip if contains numbers (likely status bar)
         if (/\d/.test(txt)) continue;
         
-        if(txt === 'Share' || txt === 'Send' || txt === 'שתף') { // Added Hebrew 'Share' just in case, given Hebrew text in example
+        const lowerTxt = txt.toLowerCase();
+        if(lowerTxt === 'share' || lowerTxt === 'send' || lowerTxt === 'שתף') { // Added Hebrew 'Share' just in case, given Hebrew text in example
            let parent = btn.parentElement;
            while(parent && parent !== post) {
              // The action bar usually has 3 buttons (Like, Comment, Share)
@@ -207,8 +225,11 @@ function findActionBar(post) {
                  let validActions = 0;
                  siblings.forEach(sib => {
                      const sTxt = (sib.innerText || sib.getAttribute('aria-label') || '').trim();
-                     if (!/\d/.test(sTxt) && (sTxt === 'Like' || sTxt === 'Comment' || sTxt === 'Share' || sTxt === 'Send' || sTxt.includes('Like') || sTxt.includes('Comment'))) {
-                         validActions++;
+                     if (!/\d/.test(sTxt)) {
+                         const sLower = sTxt.toLowerCase();
+                         if (sLower === 'like' || sLower === 'comment' || sLower === 'share' || sLower === 'send' || sLower.includes('like') || sLower.includes('comment')) {
+                             validActions++;
+                         }
                      }
                  });
                  if (validActions >= 2) return parent;
@@ -220,13 +241,15 @@ function findActionBar(post) {
         }
     }
 
-    // 2. Fallback: Look for Like/Comment if Share missing
+    // 2. Fallback: Look for Like/Comment/Reply if Share missing
     // We are more lenient here but still try to ensure we have a group
     for(let btn of buttons) {
         const txt = (btn.innerText || btn.getAttribute('aria-label') || '').trim();
         if (/\d/.test(txt)) continue;
+        
+        const lowerTxt = txt.toLowerCase();
 
-        if(txt === 'Like' || txt === 'Comment' || txt === 'אהבתי' || txt === 'תגובה') {
+        if(lowerTxt === 'like' || lowerTxt === 'comment' || lowerTxt === 'reply' || lowerTxt === 'share' || lowerTxt === 'אהבתי' || lowerTxt === 'תגובה' || lowerTxt === 'השב' || lowerTxt === 'start') {
            let parent = btn.parentElement;
            
            // Traverse up to 5 levels to find a container with at least 2 action buttons or a specific class signature
@@ -239,10 +262,11 @@ function findActionBar(post) {
                
                const hasLike = txts.some(t => t === 'like' || t === 'אהבתי');
                const hasReact = txts.some(t => t === 'react');
-               const hasReply = txts.some(t => t === 'reply' || t === 'תגובה' || t === 'comment');
+               const hasReply = txts.some(t => t === 'reply' || t === 'תגובה' || t === 'comment' || t === 'השב' || t === 'start');
                const hasShare = txts.some(t => t === 'share' || t === 'שתף' || t === 'send');
 
                // If we have Like and React, but NOT Reply or Share, skip this level as it's likely the inner Like wrapper
+               // Exception: If we have "Start", it is likely a comment/thread start
                if (hasLike && hasReact && !hasReply && !hasShare) {
                    parent = parent.parentElement;
                    levels++;
@@ -386,19 +410,37 @@ function injectButton(container, postElement) {
   
   // SPECIAL HANDLING: Check for comment layout (Action Links like Like/Reply/Edited)
   // The provided 'Before' example shows a list of action links in a <ul> or similar structure.
-  // The 'After' example shows the button appended cleanly.
   
-  // 1. Identify if 'container' is part of a comment action list.
-  // Facebook comments often use <ul> or <div> with role="toolbar" or similar for actions.
-  // The structure often looks like: <ul><li>Like</li><li>Reply</li>...</ul>
+  const btnTexts = Array.from(container.querySelectorAll('div[role="button"], span[role="button"], button'))
+                         .map(b => (b.innerText || b.getAttribute('aria-label') || '').trim().toLowerCase());
   
-  const isCommentActionList = container.tagName === 'UL' || 
+  const hasReply = btnTexts.some(t => t === 'reply' || t === 'השב' || t === 'start');
+  const hasShare = btnTexts.some(t => t === 'share' || t === 'שתף' || t === 'send');
+  const hasCommentBtn = btnTexts.some(t => t === 'comment' || t === 'תגובה');
+
+  // Check if postElement is a nested article (Comment)
+  const isNestedArticle = postElement.parentElement && postElement.parentElement.closest('div[role="article"]');
+
+  // Logic to determine if this is a Comment Button or a Post Button
+  // Default to Comment if ambiguous to avoid "Too many post buttons"
+  let isComment = hasReply;
+  let isPost = (hasShare || hasCommentBtn) && !hasReply;
+  
+  if (!isComment && !isPost) {
+      if (isNestedArticle) isComment = true;
+      else isComment = true; // Default to comment style for safety
+  }
+
+  const isCommentActionList = isComment || container.tagName === 'UL' || 
                               (container.classList.contains('x6s0dn4') && container.classList.contains('x3nfvp2')) ||
                               container.querySelector('li');
 
   if (isCommentActionList) {
       // Add specific class for comment button
       btn.classList.add('smp-analyze-btn-comment');
+      
+      // Ensure wrapper is inline for comments
+      wrapper.style.display = 'inline-flex';
 
       // If it's a list (UL), we should probably add a LI to hold our button to match structure
       if (container.tagName === 'UL') {
@@ -437,6 +479,14 @@ function injectButton(container, postElement) {
           }
       }
   } else {
+      // It's a Post button candidate.
+      
+      // CRITICAL: Ensure Max 1 Post Button per Post Element
+      if (postElement.querySelector('.smp-analyze-btn-post')) {
+          // We already have a main button for this post. Skip.
+          return;
+      }
+
       // Add specific class for post button
       btn.classList.add('smp-analyze-btn-post');
   }
