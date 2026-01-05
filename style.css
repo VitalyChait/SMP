@@ -1,20 +1,20 @@
 /* Social Media Police Styles */
 .sp-analyze-btn {
-  background-color: #4267B2;
-  color: white;
+  background-color: #ffffff;
+  color: #65686C;
   border: none;
   border-radius: 4px;
   padding: 6px 12px;
   margin-left: 10px;
   font-weight: bold;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 12px;
   transition: background-color 0.2s;
   white-space: nowrap;
 }
 
 .sp-analyze-btn:hover {
-  background-color: #365899 !important;
+  background-color: #F2F2F2 !important;
 }
 
 .sp-btn-wrapper {
