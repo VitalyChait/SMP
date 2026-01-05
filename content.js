@@ -397,6 +397,9 @@ function injectButton(container, postElement) {
                               container.querySelector('li');
 
   if (isCommentActionList) {
+      // Add specific class for comment button
+      btn.classList.add('smp-analyze-btn-comment');
+
       // If it's a list (UL), we should probably add a LI to hold our button to match structure
       if (container.tagName === 'UL') {
           const li = document.createElement('li');
@@ -433,6 +436,9 @@ function injectButton(container, postElement) {
               return;
           }
       }
+  } else {
+      // Add specific class for post button
+      btn.classList.add('smp-analyze-btn-post');
   }
 
   // Insert at the end of the action bar container (after "Share")

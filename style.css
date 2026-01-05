@@ -17,6 +17,19 @@
   background-color: #F2F2F2 !important;
 }
 
+/* Post Button - Standard Size (already defined in base, but explicit here if needed) */
+.smp-analyze-btn-post {
+  /* Inherits base size */
+}
+
+/* Comment Button - 50% Smaller */
+.smp-analyze-btn-comment {
+  padding: 3px 6px !important;
+  font-size: 10px !important;
+  margin-left: 5px !important;
+  line-height: 1.2;
+}
+
 .smp-btn-wrapper {
   display: inline-block;
   vertical-align: middle;
